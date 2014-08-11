@@ -21,6 +21,8 @@ class Settings(QDialog):
         
 class CaptureWin(QWidget):
     
+    captureDone = pyqtSignal(str)
+    
     def __init__(self,settings,screenId = -1,parent = None):
         QWidget.__init__(self)
         self.setWindowFlags(Qt.SplashScreen)
@@ -82,7 +84,10 @@ class CaptureWin(QWidget):
 
     def keyReleaseEvent(self,e):
         if e.key() == Qt.Key_Escape:
-            self.close()
+            if self.mouseClicked == False:
+                self.close()
+            else:
+                self.mouseClicked = False
         QWidget.keyReleaseEvent(self,e)
     
     def mouseMoveEvent(self,e):
@@ -98,8 +103,11 @@ class CaptureWin(QWidget):
             d = QDateTime.currentDateTime()
             saveFileName = 'Snapshot-' + d.toString('yyyy_MM_dd_hh_mm_ss') + '.png'
             image = self.originalPixmap.copy(self.snaprect)
-            image.save(saveDir + '/' + saveFileName)
+            saveFileFull = saveDir + '/' + saveFileName
+            image.save(saveFileFull)
+            self.captureDone.emit(saveFileFull)
             self.close()
+            
             
         
 def showCapture():

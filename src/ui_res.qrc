@@ -1,0 +1,7 @@
+ <!DOCTYPE RCC><RCC version="1.0">
+ <qresource>
+     <file alias="trayicon.png">res/cat.png</file>
+     <file alias="config.png">res/cat_gear.png</file>
+     <file alias="help.png">res/cat_help.png</file>
+ </qresource>
+ </RCC>
