@@ -3,6 +3,8 @@
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+import ui_res
+
 class Settings(QDialog):
     def __init__(self,parent = None):
         QDialog.__init__(self,parent)
@@ -12,7 +14,8 @@ class Settings(QDialog):
         defaultValue = ''
         if key == 'SnapShotSaveDir':
             defaultValue = QDesktopServices.storageLocation(QDesktopServices.DesktopLocation)
-            
+        if key == 'SnapShotKey':
+            defaultValue = QKeySequence(Qt.SHIFT | Qt.CTRL | Qt.Key_A).toString()
         return self.settings.value(key,defaultValue).toString()
     
     def setValue(self,key,value):
@@ -28,7 +31,7 @@ class CaptureWin(QWidget):
         self.setWindowFlags(Qt.SplashScreen)
         desktop = QApplication.desktop()
         self.settings = settings
-        print "Screen count %d" % desktop.screenCount()
+        #print "Screen count %d" % desktop.screenCount()
         if screenId == -1:
             screenId = desktop.primaryScreen()
         
@@ -110,14 +113,44 @@ class CaptureWin(QWidget):
             
             
         
-def showCapture():
-    pass
+class MainController(QSystemTrayIcon):
+    
+    appExit = pyqtSignal()
+    
+    def __init__(self,icon,settings,parent = None):
+        self.settings = settings
+        QSystemTrayIcon.__init__(self,icon,parent)
+        self.mainMenu = QMenu()
+        self.mainMenu.addAction(QAction(QIcon(":/config.png"),"Configure...",self,triggered=self.onConfig))
+        self.actCapture = QAction("",self,triggered=self.onCapture)
+        sc = QKeySequence.fromString(settings.value('SnapShotKey'))
+        self.actCapture.setText("Capture")
+        self.actCapture.setShortcut(sc)
+        self.mainMenu.addAction(self.actCapture)
+        self.mainMenu.addAction(QAction("Exit",self,triggered=self.onExit))
+        self.setContextMenu(self.mainMenu)
+
+    def onCapture(self):
+        self.w = CaptureWin(self.settings)
+        self.w.show()   
+        
+    def onConfig(self):
+        self.settings.exec_()
+        
+    def onExit(self):
+        self.appExit.emit()
 
 if __name__ == '__main__':
 
     import sys
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
     s = Settings()
-    w = CaptureWin(s)
-    w.show()
+    mainController = MainController(QIcon(":/trayicon.png"),s)
+    mainController.appExit.connect(app.quit)
+    
+    mainController.show()
+    
+    #
+
     app.exec_()
