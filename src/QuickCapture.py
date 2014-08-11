@@ -5,9 +5,9 @@ from PyQt4.QtGui import *
 
 import ui_res
 
-class Settings(QDialog):
+class Settings(QObject):
     def __init__(self,parent = None):
-        QDialog.__init__(self,parent)
+        QObject.__init__(self,parent)
         self.settings = QSettings("YennarOpenSource", "QuickSnapshot")
         
     def value(self,key):
@@ -111,7 +111,15 @@ class CaptureWin(QWidget):
             self.captureDone.emit(saveFileFull)
             self.close()
             
-            
+class QXApplication(QApplication):
+    
+    def __init__(self,*kargs):
+        QApplication.__init__(self,*kargs)
+        
+    def setGlobalHotKey(self,keySeq):
+        import platform
+        if not platform.system() == 'Windows':
+            return False
         
 class MainController(QSystemTrayIcon):
     
@@ -121,22 +129,30 @@ class MainController(QSystemTrayIcon):
         self.settings = settings
         QSystemTrayIcon.__init__(self,icon,parent)
         self.mainMenu = QMenu()
-        self.mainMenu.addAction(QAction(QIcon(":/config.png"),"Configure...",self,triggered=self.onConfig))
-        self.actCapture = QAction("",self,triggered=self.onCapture)
-        sc = QKeySequence.fromString(settings.value('SnapShotKey'))
-        self.actCapture.setText("Capture")
-        self.actCapture.setShortcut(sc)
+        self.actCapture = QAction(QIcon(":/config.png"),"Capture",self,triggered=self.onCapture)
+        self.actCapture.setShortcut(QKeySequence.fromString(settings.value('SnapShotKey')))
         self.mainMenu.addAction(self.actCapture)
+        
+        self.mainMenu.addAction(QAction("Set capture save directory...",self,triggered=self.onSetSavePath))
+        
         self.mainMenu.addAction(QAction("Exit",self,triggered=self.onExit))
         self.setContextMenu(self.mainMenu)
 
     def onCapture(self):
         self.w = CaptureWin(self.settings)
+        self.w.captureDone.connect(self.onCaptureMessage)
         self.w.show()   
         
-    def onConfig(self):
-        self.settings.exec_()
-        
+    def onSetSavePath(self):
+        d = QFileDialog.getExistingDirectory(None,"Open Directory",
+            QDesktopServices.storageLocation(QDesktopServices.HomeLocation),QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
+        if (not d is None) and (not d == '') and (QDir().exists(d)):
+            self.settings.setValue('SnapShotSaveDir',d)
+            self.showMessage("QuickCapture","Set save directory to %s" % d,QSystemTrayIcon.Information,5000)
+            
+    def onCaptureMessage(self,s):
+        self.showMessage("QuickCapture","Capture screen snapshot to %s" % s,QSystemTrayIcon.Information,5000)
+         
     def onExit(self):
         self.appExit.emit()
 
