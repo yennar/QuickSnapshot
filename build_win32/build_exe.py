@@ -11,7 +11,7 @@ py2exe_options = {
         "compressed": 1,
         "optimize": 2,
         "ascii": 0,
-        "includes": ["sip"],
+        "includes": ["sip","PyQt4.QtCore","PyQt4.QtGui","pygs","ctypes"],
         "bundle_files": 1,
         }
  
@@ -20,8 +20,9 @@ setup(
       version = '1.0',
       windows = [{
             'script' : 'QuickCapture.py'
-             }
+             },
            ],     
       zipfile = None,
-      options = {'py2exe': py2exe_options}
+      options = {'py2exe': py2exe_options},
+      data_files=[('.',['QxtGlobalShortcut.dll'])]
       )
