@@ -29,7 +29,7 @@ QuickSnapshot
 ![snapshot](https://raw.githubusercontent.com/yennar/QuickSnapshot/master/web/end_capture.jpg)
 
 
-* Then you get a picture on your Desktop.
+* Then you get a picture on your Desktop. And the picture will be saved into Clipboard.
 
 ![snapshot](https://raw.githubusercontent.com/yennar/QuickSnapshot/master/web/finish_capture.PNG)
 

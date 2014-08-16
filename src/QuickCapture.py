@@ -113,6 +113,8 @@ class CaptureWin(QWidget):
             image.save(saveFileFull)
             self.captureDone.emit(saveFileFull)
             self.close()
+            clip = QApplication.clipboard()
+            clip.setPixmap(image)
             
 class QXShortCutKeyConfigureDialog(QDialog):
     def __init__(self,keySeqCurrent,iconMain,parent = None):
