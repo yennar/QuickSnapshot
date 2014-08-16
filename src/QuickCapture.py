@@ -2,6 +2,7 @@
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from pygs import QxtGlobalShortcut
 
 import ui_res
 
@@ -16,7 +17,7 @@ class Settings(QObject):
             defaultValue = QDesktopServices.storageLocation(QDesktopServices.DesktopLocation)
         if key == 'SnapShotKey':
             defaultValue = QKeySequence(Qt.SHIFT | Qt.CTRL | Qt.Key_A).toString()
-        return self.settings.value(key,defaultValue).toString()
+        return self.settings.value(key,defaultValue)
     
     def setValue(self,key,value):
         self.settings.setValue(key,value)
@@ -44,6 +45,8 @@ class CaptureWin(QWidget):
         self.mousePos = QPoint(0,0)
         self.mousePosLeft = QPoint(0,0)
         self.mouseClicked = False
+        
+
     
     def paintEvent(self,e):
         painter = QPainter(self)
@@ -111,15 +114,67 @@ class CaptureWin(QWidget):
             self.captureDone.emit(saveFileFull)
             self.close()
             
-class QXApplication(QApplication):
-    
-    def __init__(self,*kargs):
-        QApplication.__init__(self,*kargs)
+class QXShortCutKeyConfigureDialog(QDialog):
+    def __init__(self,keySeqCurrent,iconMain,parent = None):
+        QDialog.__init__(self,parent)
         
-    def setGlobalHotKey(self,keySeq):
-        import platform
-        if not platform.system() == 'Windows':
-            return False
+        self.lblIcon = QLabel()
+        self.lblIcon.setFrameStyle(QFrame.NoFrame)
+        self.lblIcon.setPixmap(QPixmap(iconMain))
+        
+        self.lblInfo = QLabel()
+        self.lblInfoText = "Please press new key sequence"
+        self.lblInfo.setText(self.lblInfoText)
+        layInfo = QHBoxLayout()
+        layInfo.addWidget(self.lblIcon)
+        layInfo.addWidget(self.lblInfo)
+        
+        self.btnBoxes = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.btnBoxes.button(QDialogButtonBox.Ok).setEnabled(False)
+        self.btnBoxes.accepted.connect(self.onAccept)
+        self.btnBoxes.rejected.connect(self.close)
+        
+        layMain = QVBoxLayout()
+        layMain.addLayout(layInfo)
+        layMain.addWidget(self.btnBoxes)
+        self.setLayout(layMain)
+        
+        self.tmr = QTimer()
+        self.tmr.setInterval(700)
+        self.tmr.timeout.connect(self.onTimeOut)
+        self.lblInfoShow = True
+
+        self.keySet = False
+        
+        self.tmr.start()
+        self.grabKeyboard()
+        self.key = None
+        
+    def onTimeOut(self):
+        
+        if not self.keySet:
+            self.lblInfoShow = not self.lblInfoShow 
+            
+            if self.lblInfoShow:
+                self.lblInfo.setText(self.lblInfoText)
+            else:
+                self.lblInfo.clear()
+        else:
+            pass
+    def closeEvent(self,e):
+        self.releaseKeyboard()
+        e.accept()
+        
+    def keyPressEvent(self,e):
+        self.seq = QKeySequence(e.modifiers() | e.key())
+        self.keySet = True
+        self.lblInfo.setText(self.seq.toString())
+        self.btnBoxes.button(QDialogButtonBox.Ok).setEnabled(True)
+        
+    def onAccept(self):
+        self.key = self.seq.toString()
+        self.close()
+
         
 class MainController(QSystemTrayIcon):
     
@@ -130,28 +185,56 @@ class MainController(QSystemTrayIcon):
         QSystemTrayIcon.__init__(self,icon,parent)
         self.mainMenu = QMenu()
         self.actCapture = QAction(QIcon(":/config.png"),"Capture",self,triggered=self.onCapture)
+
         self.actCapture.setShortcut(QKeySequence.fromString(settings.value('SnapShotKey')))
         self.mainMenu.addAction(self.actCapture)
         
-        self.mainMenu.addAction(QAction("Set capture save directory...",self,triggered=self.onSetSavePath))
+        self.mainMenu.addAction(QAction("Set save directory...",self,triggered=self.onSetSavePath))
+        self.mainMenu.addAction(QAction("Set shortcut...",self,triggered=self.onConfigureShortCut))
         
         self.mainMenu.addAction(QAction("Exit",self,triggered=self.onExit))
         self.setContextMenu(self.mainMenu)
-
+        self.activated.connect(self.onActived)
+        
+        self.gsKey = QxtGlobalShortcut()
+        self.gsKey.setShortcut(QKeySequence.fromString(settings.value('SnapShotKey')))
+        self.gsKey.activated.connect(self.onCapture)
+        
+    def onActived(self,r):
+        if r == QSystemTrayIcon.Trigger:
+            self.onClick()
+        elif r == QSystemTrayIcon.DoubleClick:
+            self.onCapture()
+        
     def onCapture(self):
         self.w = CaptureWin(self.settings)
         self.w.captureDone.connect(self.onCaptureMessage)
         self.w.show()   
+        
+    def onClick(self):
+        self.showMessage("meo~","Press %s to capture" % self.settings.value('SnapShotKey'),QSystemTrayIcon.Information,50)
+        
+    def onConfigureShortCut(self):
+        c = QXShortCutKeyConfigureDialog(self.settings.value('SnapShotKey'), ":/help.png")
+        c.windowTitle = 'QuickCapture'
+        c.exec_()
+        if not c.key is None:
+            self.settings.setValue('SnapShotKey',c.key)
+            del self.gsKey
+            self.gsKey = QxtGlobalShortcut()
+            self.gsKey.setShortcut(QKeySequence.fromString(self.settings.value('SnapShotKey')))
+            self.gsKey.activated.connect(self.onCapture)   
+            self.actCapture.setShortcut(QKeySequence.fromString(self.settings.value('SnapShotKey')))
         
     def onSetSavePath(self):
         d = QFileDialog.getExistingDirectory(None,"Open Directory",
             QDesktopServices.storageLocation(QDesktopServices.HomeLocation),QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
         if (not d is None) and (not d == '') and (QDir().exists(d)):
             self.settings.setValue('SnapShotSaveDir',d)
-            self.showMessage("QuickCapture","Set save directory to %s" % d,QSystemTrayIcon.Information,5000)
+            self.showMessage("QuickCapture","Set save directory to %s" % d,QSystemTrayIcon.Information,50)
             
     def onCaptureMessage(self,s):
-        self.showMessage("QuickCapture","Capture screen snapshot to %s" % s,QSystemTrayIcon.Information,5000)
+        self.showMessage("QuickCapture","Capture screen snapshot to %s" % s,QSystemTrayIcon.Information,50)
          
     def onExit(self):
         self.appExit.emit()
