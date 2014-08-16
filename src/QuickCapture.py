@@ -239,8 +239,10 @@ class MainController(QSystemTrayIcon):
         self.showMessage("QuickCapture","Capture screen snapshot to %s" % s,QSystemTrayIcon.Information,50)
          
     def onExit(self):
-        del self.gsKey
-        QApplication.exit(0)
+        rtn = QMessageBox.question(None,"QuickCapture","Quit now?",QMessageBox.Yes | QMessageBox.No,QMessageBox.No)
+        if rtn == QMessageBox.Yes:
+            del self.gsKey
+            QApplication.exit(0)
 
 if __name__ == '__main__':
 
