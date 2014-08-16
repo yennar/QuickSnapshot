@@ -31,6 +31,6 @@ QuickSnapshot
 
 * Then you get a picture on your Desktop.
 
-![snapshot](https://raw.githubusercontent.com/yennar/QuickSnapshot/master/web/finish_capture.jpg)
+![snapshot](https://raw.githubusercontent.com/yennar/QuickSnapshot/master/web/finish_capture.PNG)
 
 * If you would like to change the capture shortcut or the default image saving directory, please right-click the tray icon and select in the menu.
